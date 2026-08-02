@@ -8,6 +8,12 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer 
 } from 'recharts';
 
+// 1. We define a strict TypeScript interface so Next.js knows exactly what a "Habit" is
+interface Habit {
+  id: string;
+  name: string;
+}
+
 const pieData = [ { name: 'Completed', value: 75 }, { name: 'Remaining', value: 25 } ];
 const pieColors = ['#3b82f6', '#e5e7eb'];
 
@@ -17,28 +23,30 @@ const barData = [
 ];
 
 export default function Dashboard() {
-  const [habits, setHabits] = useState<any[]>([]);
+  // 2. We replace "any" with our specific "Habit" type
+  const [habits, setHabits] = useState<Habit[]>([]);
   const [newHabitName, setNewHabitName] = useState('');
   const router = useRouter();
 
   useEffect(() => {
-    fetchHabits();
-  }, []);
-
-  const fetchHabits = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/login'); 
-      return;
-    }
-    
-    const { data } = await supabase
-      .from('habits')
-      .select('*')
-      .order('created_at', { ascending: true });
+    // 3. We move the fetch function INSIDE the useEffect to satisfy ESLint
+    const fetchHabits = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login'); 
+        return;
+      }
       
-    if (data) setHabits(data);
-  };
+      const { data } = await supabase
+        .from('habits')
+        .select('*')
+        .order('created_at', { ascending: true });
+        
+      if (data) setHabits(data as Habit[]);
+    };
+
+    fetchHabits();
+  }, [router]);
 
   const handleAddHabit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,13 +55,13 @@ export default function Dashboard() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('habits')
       .insert([{ name: newHabitName, user_id: user.id }])
       .select();
     
     if (data) {
-      setHabits([...habits, data[0]]);
+      setHabits([...habits, data[0] as Habit]);
       setNewHabitName('');
     }
   };
